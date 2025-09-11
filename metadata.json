@@ -1,0 +1,5 @@
+{
+  "name": "Batch Image Processor",
+  "description": "A client-side web application for batch resizing and packaging of images. Upload images, choose a preset, and download a ZIP archive with processed 'Hi-res' and 'Web' versions. All processing happens locally in your browser.",
+  "requestFramePermissions": []
+}
