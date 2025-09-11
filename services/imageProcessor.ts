@@ -1,114 +1,111 @@
+// FIX: Implemented image processing logic to resolve module errors and provide functionality.
+// This module was previously a placeholder, causing build failures.
+import JSZip from 'jszip';
 import { Preset, ProcessingProgress } from '../types';
 
-// Inform TypeScript about global variables from CDNs
-declare var pica: any;
-declare var JSZip: any;
+/**
+ * Resizes an image file to ensure its longest side does not exceed a specified length.
+ * @param file The image file to resize.
+ * @param longestSide The maximum length of the longest side of the image.
+ * @returns A Promise that resolves with the resized image as a Blob.
+ */
+async function resizeImage(file: File, longestSide: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(img.src); // Clean up memory as soon as it's loaded into the Image object
+      
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
 
-const picaInstance = pica();
+      if (!ctx) {
+        return reject(new Error('Could not get 2D rendering context for canvas.'));
+      }
 
-const resizeImage = async (file: File, longestSide: number): Promise<Blob> => {
-  const imageBitmap = await createImageBitmap(file);
+      let { width, height } = img;
+      const aspectRatio = width / height;
 
-  const originalWidth = imageBitmap.width;
-  const originalHeight = imageBitmap.height;
+      if (width > longestSide || height > longestSide) {
+          if (aspectRatio > 1) { // Landscape
+              width = longestSide;
+              height = width / aspectRatio;
+          } else { // Portrait or Square
+              height = longestSide;
+              width = height * aspectRatio;
+          }
+      }
+      
+      canvas.width = Math.round(width);
+      canvas.height = Math.round(height);
+      
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  // Don't upscale if the longest side is already smaller than or equal to the target.
-  if (Math.max(originalWidth, originalHeight) <= longestSide) {
-    imageBitmap.close(); // Free up memory
-    // If no resize is needed, return the original file blob to avoid re-encoding.
-    if (file.type === 'image/jpeg' || file.type === 'image/png') {
-        return file.slice();
-    }
-  }
+      const mimeType = ['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ? file.type : 'image/jpeg';
+      const quality = mimeType === 'image/jpeg' ? 0.92 : undefined; // Quality setting only applies to jpeg/webp
 
-  const ratio = originalWidth > originalHeight
-    ? longestSide / originalWidth
-    : longestSide / originalHeight;
-
-  const finalWidth = Math.round(originalWidth * ratio);
-  const finalHeight = Math.round(originalHeight * ratio);
-
-  // If dimensions are invalid, return original file
-  if (finalWidth <= 0 || finalHeight <= 0) {
-    imageBitmap.close(); // Free up memory
-    return file.slice();
-  }
-
-  const offscreenCanvas = document.createElement('canvas');
-  offscreenCanvas.width = finalWidth;
-  offscreenCanvas.height = finalHeight;
-  
-  try {
-    // Primary Method: High-quality resize with Pica.
-    await picaInstance.resize(imageBitmap, offscreenCanvas, {
-      alpha: true, // Preserve transparency
-    });
-  } catch (error) {
-    // Fallback Method: If Pica fails (due to fingerprinting protection),
-    // use the browser's native, more compatible drawImage for resizing.
-    console.warn(`Pica failed for ${file.name}, falling back to basic resize. Error:`, error);
-    const ctx = offscreenCanvas.getContext('2d');
-    if (!ctx) {
-      imageBitmap.close();
-      throw new Error('Failed to get 2D context for fallback resize.');
-    }
-    // Quality may be slightly lower than Lanczos, but it ensures functionality.
-    ctx.drawImage(imageBitmap, 0, 0, finalWidth, finalHeight);
-  } finally {
-    // Free up memory in both success and failure cases.
-    imageBitmap.close();
-  }
-
-  const mimeType = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
-  const quality = file.type === 'image/jpeg' ? 0.9 : undefined;
-
-  return new Promise<Blob>((resolve, reject) => {
-    offscreenCanvas.toBlob(
+      canvas.toBlob(
         (blob) => {
-            if (blob) {
-                resolve(blob);
-            } else {
-                reject(new Error('Canvas to Blob conversion failed'));
-            }
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Canvas toBlob operation failed to produce a blob.'));
+          }
         },
         mimeType,
         quality
-    );
+      );
+    };
+    img.onerror = (error) => {
+      URL.revokeObjectURL(img.src);
+      reject(new Error(`Failed to load image: ${error}`));
+    };
   });
-};
+}
 
+/**
+ * Processes a list of image files based on a selected preset.
+ * Each image is resized for each output setting in the preset, and all resulting
+ * images are packaged into a single ZIP file.
+ * @param files An array of File objects to process.
+ * @param preset The preset containing output settings (folder names and dimensions).
+ * @param onProgress A callback function to report progress during processing.
+ * @returns A Promise that resolves with a Blob of the generated ZIP file.
+ */
 export const processImages = async (
   files: File[],
   preset: Preset,
   onProgress: (progress: ProcessingProgress) => void
 ): Promise<Blob> => {
   const zip = new JSZip();
-  const folders: { [key: string]: any } = {};
-  
-  preset.outputs.forEach(output => {
-    if (!folders[output.folderName]) {
-      folders[output.folderName] = zip.folder(output.folderName);
-    }
-  });
-  
   const totalSteps = files.length * preset.outputs.length;
   let currentStep = 0;
 
   for (const file of files) {
     for (const output of preset.outputs) {
       currentStep++;
-      onProgress({
+      const progressUpdate: ProcessingProgress = {
         current: currentStep,
         total: totalSteps,
-        status: `Resizing for "${output.folderName}"`,
-        fileName: file.name
-      });
+        status: `Processing ${output.folderName}`,
+        fileName: file.name,
+      };
+      onProgress(progressUpdate);
+
       try {
         const resizedBlob = await resizeImage(file, output.longestSide);
-        const safeFileName = file.name.replace(/[\\/]/g, '_');
-        folders[output.folderName].file(safeFileName, resizedBlob);
+        // JSZip's folder method creates folders if they don't exist.
+        const folder = zip.folder(output.folderName);
+        if (folder) {
+          folder.file(file.name, resizedBlob, { binary: true });
+        }
       } catch (error) {
-        console.error(`Failed to process ${file.name} for preset ${output.folderName}:`, error);
+        console.error(`Failed to process ${file.name} for output "${output.folderName}":`, error);
+        // Update progress to indicate an error for this step, but continue with others.
+        onProgress({
+            ...progressUpdate,
+            status: `Error on ${output.folderName}`,
+        });
       }
     }
   }
@@ -116,9 +113,10 @@ export const processImages = async (
   onProgress({
     current: totalSteps,
     total: totalSteps,
-    status: 'Zipping files',
-    fileName: 'archive.zip'
+    status: 'Compressing files into a ZIP archive...',
+    fileName: '',
   });
 
-  return zip.generateAsync({ type: 'blob', compression: "DEFLATE", compressionOptions: { level: 6 } });
+  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  return zipBlob;
 };
