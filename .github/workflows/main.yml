@@ -1,0 +1,42 @@
+# Простой воркфлоу для сборки и публикации на GitHub Pages
+name: Deploy to GitHub Pages
+
+on:
+  # Запускается при пуше в `main` ветку
+  push:
+    branches: ["main"]
+
+  # Позволяет запускать этот воркфлоу вручную со страницы Actions
+  workflow_dispatch:
+
+# Устанавливаем права для GITHUB_TOKEN, чтобы разрешить публикацию на GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Разрешаем только одну одновременную публикацию
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  # Единственная задача - публикация
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Загружаем всё из корневой директории
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
