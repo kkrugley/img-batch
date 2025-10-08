@@ -2,8 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-// FIX: Moved JSX augmentation here from types.ts to ensure it correctly merges with React's global types.
-// This resolves errors where standard HTML elements were not recognized in JSX.
+// FIX: Add global JSX augmentation for the 'ion-icon' custom element.
+// This ensures TypeScript recognizes it as a valid JSX tag throughout the application.
 declare global {
   namespace JSX {
     interface IntrinsicElements {

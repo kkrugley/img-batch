@@ -1,3 +1,5 @@
+import type React from 'react';
+
 export interface OutputSetting {
   id: string;
   folderName: string;

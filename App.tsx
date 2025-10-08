@@ -10,7 +10,6 @@ import { processImages } from './services/imageProcessor';
 import { Header, Footer } from './components/Layout';
 import { Download } from './components/Icons';
 
-// FIX: The global declaration for 'ion-icon' was moved to types.ts to resolve JSX type conflicts. This fixes errors where standard HTML elements were not recognized.
 const App: React.FC = () => {
   const [files, setFiles] = useState<ProcessedFile[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('default-1');
