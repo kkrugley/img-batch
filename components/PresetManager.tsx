@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+// FIX: Import types from the types.ts module.
 import { Preset, OutputSetting } from '../types';
-import { Plus, Rocket, Trash2 } from './Icons';
+import { Plus, Trash2 } from './Icons';
 
 const DEFAULT_PRESETS: Preset[] = [
   { 
@@ -23,9 +24,21 @@ interface PresetManagerProps {
   selectedPresetId: string;
   onPresetChange: (id: string) => void;
   onProcess: (presets: Preset[]) => void;
+  outputFormat: 'original' | 'jpeg' | 'png' | 'webp';
+  onOutputFormatChange: (format: 'original' | 'jpeg' | 'png' | 'webp') => void;
+  jpegQuality: number;
+  onJpegQualityChange: (quality: number) => void;
 }
 
-const PresetManager: React.FC<PresetManagerProps> = ({ selectedPresetId, onPresetChange, onProcess }) => {
+const PresetManager: React.FC<PresetManagerProps> = ({ 
+  selectedPresetId, 
+  onPresetChange, 
+  onProcess,
+  outputFormat,
+  onOutputFormatChange,
+  jpegQuality,
+  onJpegQualityChange,
+}) => {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [newPreset, setNewPreset] = useState(getInitialNewPreset());
@@ -91,21 +104,35 @@ const PresetManager: React.FC<PresetManagerProps> = ({ selectedPresetId, onPrese
       onPresetChange(DEFAULT_PRESETS[0].id);
     }
   };
+
+  const selectedPreset = presets.find(p => p.id === selectedPresetId);
   
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6 space-y-6">
       <div>
         <label htmlFor="preset-select" className="block text-sm font-medium text-gray-400 mb-2">Select a Preset</label>
-        <select
-          id="preset-select"
-          value={selectedPresetId}
-          onChange={(e) => onPresetChange(e.target.value)}
-          className="w-full bg-gray-700 border border-gray-600 text-white rounded-md p-3 focus:ring-purple-500 focus:border-purple-500"
-        >
-          {presets.map(preset => (
-            <option key={preset.id} value={preset.id}>{preset.name}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+            <select
+              id="preset-select"
+              value={selectedPresetId}
+              onChange={(e) => onPresetChange(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 text-white rounded-md p-3 focus:ring-purple-500 focus:border-purple-500"
+            >
+              {presets.map(preset => (
+                <option key={preset.id} value={preset.id}>{preset.name}</option>
+              ))}
+            </select>
+            {selectedPreset && !selectedPreset.isDefault && (
+                <button 
+                    onClick={() => handleDeletePreset(selectedPreset.id)}
+                    className="flex-shrink-0 p-3 bg-gray-700 text-red-400 rounded-md hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                    title="Delete this preset"
+                    aria-label="Delete selected preset"
+                >
+                    <Trash2 className="w-5 h-5" />
+                </button>
+            )}
+        </div>
       </div>
 
       <div>
@@ -142,24 +169,38 @@ const PresetManager: React.FC<PresetManagerProps> = ({ selectedPresetId, onPrese
         </form>
       )}
 
-      <div className="space-y-2 pt-4 border-t border-gray-700">
-        <h4 className="font-semibold text-gray-400">Custom Presets</h4>
-        {presets.filter(p => !p.isDefault).length > 0 ? (
-          presets.filter(p => !p.isDefault).map(p => (
-            <div key={p.id} className="flex justify-between items-center p-3 bg-gray-700/50 rounded-md">
-                <div>
-                    <p className="font-medium text-gray-200">{p.name}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                        {p.outputs.map(o => `${o.folderName} (${o.longestSide}px)`).join(', ')}
-                    </p>
-                </div>
-              <button onClick={() => handleDeletePreset(p.id)} className="p-2 text-red-400 hover:text-red-300 rounded-full hover:bg-red-500/10">
-                <Trash2 className="w-5 h-5"/>
-              </button>
-            </div>
-          ))
-        ) : (
-          <p className="text-sm text-gray-500">No custom presets created.</p>
+      <div className="space-y-4 pt-6 border-t border-gray-700">
+        <h4 className="font-semibold text-orange-400 mb-2">Processing Settings</h4>
+        <div>
+          <label htmlFor="format-select" className="block text-sm font-medium text-gray-400 mb-2">Output Format</label>
+          <select
+            id="format-select"
+            value={outputFormat}
+            onChange={(e) => onOutputFormatChange(e.target.value as 'original' | 'jpeg' | 'png' | 'webp')}
+            className="w-full bg-gray-700 border border-gray-600 text-white rounded-md p-3 focus:ring-orange-500 focus:border-orange-500"
+          >
+            <option value="original">Keep Original</option>
+            <option value="jpeg">JPEG</option>
+            <option value="png">PNG</option>
+            <option value="webp">WEBP</option>
+          </select>
+        </div>
+        
+        {(outputFormat === 'jpeg' || outputFormat === 'webp') && (
+          <div className="animate-fade-in">
+            <label htmlFor="quality-slider" className="block text-sm font-medium text-gray-400 mb-2">
+              Quality: <span className="font-bold text-orange-300">{jpegQuality}</span>
+            </label>
+            <input
+              id="quality-slider"
+              type="range"
+              min="1"
+              max="100"
+              value={jpegQuality}
+              onChange={(e) => onJpegQualityChange(parseInt(e.target.value, 10))}
+              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
+            />
+          </div>
         )}
       </div>
 
@@ -167,7 +208,7 @@ const PresetManager: React.FC<PresetManagerProps> = ({ selectedPresetId, onPrese
         onClick={() => onProcess(presets)}
         className="w-full flex items-center justify-center gap-3 mt-4 px-6 py-4 bg-purple-600 text-white font-bold rounded-lg shadow-lg hover:bg-purple-500 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-purple-500"
       >
-        <Rocket />
+        <ion-icon name="images-outline" style={{ fontSize: '24px' }}></ion-icon>
         Process Images
       </button>
     </div>

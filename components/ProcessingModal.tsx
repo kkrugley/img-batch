@@ -1,4 +1,5 @@
 import React from 'react';
+// FIX: Import types from the types.ts module.
 import { ProcessingProgress } from '../types';
 
 interface ProcessingModalProps {

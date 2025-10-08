@@ -1,19 +1,26 @@
 import React, { useState, useCallback } from 'react';
+// FIX: Import types from the types.ts module.
 import { Preset, ProcessedFile, ProcessingProgress } from './types';
 import ImageUploader from './components/ImageUploader';
 import ImageList from './components/ImageList';
 import PresetManager from './components/PresetManager';
 import ProcessingModal from './components/ProcessingModal';
+import AboutModal from './components/AboutModal';
 import { processImages } from './services/imageProcessor';
 import { Header, Footer } from './components/Layout';
-import { Download, Rocket } from './components/Icons';
+import { Download } from './components/Icons';
 
+// FIX: The global declaration for 'ion-icon' was moved to types.ts to resolve JSX type conflicts. This fixes errors where standard HTML elements were not recognized.
 const App: React.FC = () => {
   const [files, setFiles] = useState<ProcessedFile[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('default-1');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<ProcessingProgress>({ current: 0, total: 0, status: '', fileName: '' });
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [showAboutModal, setShowAboutModal] = useState<boolean>(false); // State for About modal
+  const [outputFormat, setOutputFormat] = useState<'original' | 'jpeg' | 'png' | 'webp'>('original');
+  const [jpegQuality, setJpegQuality] = useState<number>(92);
+
 
   const handleFilesSelected = (selectedFiles: File[]) => {
     const newProcessedFiles = selectedFiles
@@ -53,7 +60,9 @@ const App: React.FC = () => {
       const zipBlob = await processImages(
         files.map(f => f.file),
         selectedPreset,
-        (p: ProcessingProgress) => setProgress(p)
+        (p: ProcessingProgress) => setProgress(p),
+        outputFormat,
+        jpegQuality,
       );
       const url = URL.createObjectURL(zipBlob);
       setDownloadUrl(url);
@@ -63,11 +72,11 @@ const App: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [files, selectedPresetId]);
+  }, [files, selectedPresetId, outputFormat, jpegQuality]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 flex flex-col font-sans">
-      <Header />
+      <Header onAboutClick={() => setShowAboutModal(true)} />
       <main className="flex-grow container mx-auto p-4 md:p-8 space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6">
@@ -77,7 +86,15 @@ const App: React.FC = () => {
           </div>
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-purple-400 border-b-2 border-purple-500/20 pb-2">2. Configure & Process</h2>
-            <PresetManager selectedPresetId={selectedPresetId} onPresetChange={setSelectedPresetId} onProcess={handleProcess} />
+            <PresetManager 
+              selectedPresetId={selectedPresetId} 
+              onPresetChange={setSelectedPresetId} 
+              onProcess={handleProcess}
+              outputFormat={outputFormat}
+              onOutputFormatChange={setOutputFormat}
+              jpegQuality={jpegQuality}
+              onJpegQualityChange={setJpegQuality}
+            />
             
             {downloadUrl && (
                 <div className="bg-gray-800 border border-green-500/30 rounded-lg p-6 flex flex-col items-center text-center shadow-lg animate-fade-in">
@@ -95,7 +112,7 @@ const App: React.FC = () => {
             )}
              {!downloadUrl && files.length > 0 && (
                 <div className="bg-gray-800 border border-cyan-500/30 rounded-lg p-6 flex flex-col items-center text-center shadow-lg">
-                    <Rocket className="w-12 h-12 text-cyan-400 mb-4" />
+                    <ion-icon name="images-outline" className="text-cyan-400 mb-4" style={{ fontSize: '48px' }}></ion-icon>
                     <h3 className="text-xl font-semibold text-cyan-300 mb-2">Ready to Go!</h3>
                     <p className="text-gray-400">Click the "Process Images" button in the preset manager to start.</p>
                 </div>
@@ -105,6 +122,7 @@ const App: React.FC = () => {
       </main>
       <Footer />
       {isProcessing && <ProcessingModal progress={progress} />}
+      {showAboutModal && <AboutModal onClose={() => setShowAboutModal(false)} />}
     </div>
   );
 };
