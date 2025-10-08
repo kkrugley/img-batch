@@ -22,17 +22,16 @@ async function resizeImage(
   const { width: originalWidth, height: originalHeight } = imageBitmap;
   const aspectRatio = originalWidth / originalHeight;
 
-  let finalWidth = originalWidth;
-  let finalHeight = originalHeight;
+  let finalWidth: number;
+  let finalHeight: number;
 
-  if (originalWidth > longestSide || originalHeight > longestSide) {
-      if (aspectRatio > 1) { // Landscape
-          finalWidth = longestSide;
-          finalHeight = finalWidth / aspectRatio;
-      } else { // Portrait or Square
-          finalHeight = longestSide;
-          finalWidth = finalHeight * aspectRatio;
-      }
+  // Unconditionally calculate the new dimensions to support both upscaling and downscaling.
+  if (aspectRatio > 1) { // Landscape
+      finalWidth = longestSide;
+      finalHeight = finalWidth / aspectRatio;
+  } else { // Portrait or Square
+      finalHeight = longestSide;
+      finalWidth = finalHeight * aspectRatio;
   }
 
   const toCanvas = document.createElement('canvas');
