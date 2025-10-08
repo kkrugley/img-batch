@@ -5,7 +5,7 @@ import { Plus, Rocket, Trash2 } from './Icons';
 const DEFAULT_PRESETS: Preset[] = [
   { 
     id: 'default-1', 
-    name: 'Standard (4500px / 2300px)', 
+    name: 'Hi-Res + Web (4500px / 2300px)', 
     isDefault: true, 
     outputs: [
       { id: 'default-out-1', folderName: 'Hi-res', longestSide: 4500 },
