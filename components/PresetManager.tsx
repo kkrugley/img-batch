@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 // FIX: Import types from the types.ts module.
 import { Preset, OutputSetting } from '../types';
-import { Plus, Trash2 } from './Icons';
+// FIX: Import `Images` icon component to replace `ion-icon`.
+import { Plus, Trash2, Images } from './Icons';
 
 const DEFAULT_PRESETS: Preset[] = [
   { 
@@ -208,7 +209,8 @@ const PresetManager: React.FC<PresetManagerProps> = ({
         onClick={() => onProcess(presets)}
         className="w-full flex items-center justify-center gap-3 mt-4 px-6 py-4 bg-purple-600 text-white font-bold rounded-lg shadow-lg hover:bg-purple-500 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-purple-500"
       >
-        <ion-icon name="images-outline" style={{ fontSize: '24px' }}></ion-icon>
+        {/* FIX: Replaced ion-icon with a local SVG component to resolve TypeScript errors. Size is controlled via Tailwind classes. */}
+        <Images className="w-6 h-6" />
         Process Images
       </button>
     </div>

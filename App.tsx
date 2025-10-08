@@ -8,7 +8,8 @@ import ProcessingModal from './components/ProcessingModal';
 import AboutModal from './components/AboutModal';
 import { processImages } from './services/imageProcessor';
 import { Header, Footer } from './components/Layout';
-import { Download } from './components/Icons';
+// FIX: Import `Images` icon component to replace `ion-icon`.
+import { Download, Images } from './components/Icons';
 
 const App: React.FC = () => {
   const [files, setFiles] = useState<ProcessedFile[]>([]);
@@ -111,7 +112,8 @@ const App: React.FC = () => {
             )}
              {!downloadUrl && files.length > 0 && (
                 <div className="bg-gray-800 border border-cyan-500/30 rounded-lg p-6 flex flex-col items-center text-center shadow-lg">
-                    <ion-icon name="images-outline" className="text-cyan-400 mb-4" style={{ fontSize: '48px' }}></ion-icon>
+                    {/* FIX: Replaced ion-icon with a local SVG component to resolve TypeScript errors and align with the project's icon system. Size is controlled via Tailwind classes. */}
+                    <Images className="text-cyan-400 mb-4 w-12 h-12" />
                     <h3 className="text-xl font-semibold text-cyan-300 mb-2">Ready to Go!</h3>
                     <p className="text-gray-400">Click the "Process Images" button in the preset manager to start.</p>
                 </div>
